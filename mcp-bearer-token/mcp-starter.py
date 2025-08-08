@@ -2,7 +2,7 @@ import asyncio
 from typing import Annotated
 import os
 from dotenv import load_dotenv
-from fastmcp import FastMCP
+from fastmcp.server import FastMCP
 from fastmcp.server.auth.providers.bearer import BearerAuthProvider, RSAKeyPair
 from mcp import ErrorData, McpError
 from mcp.server.auth.provider import AccessToken
