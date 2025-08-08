@@ -1,0 +1,8 @@
+pydantic
+fastapi
+uvicorn
+PyMuPDF       # for PDF text extraction.
+openai        # for AI chat with PDFs.
+python-dotenv # for .env file loading.
+schedule      # for generating schedules.
+requests      # for making HTTP requests.
