@@ -200,22 +200,29 @@ ExtractPDFTextDescription = RichToolDescription(
 
 @mcp.tool(description=ExtractPDFTextDescription.model_dump_json())
 async def extract_pdf_text(
-    pdf_data: Annotated[str, Field(description="Base64-encoded PDF file data")],
+    puch_pdf_data: Annotated[str, Field(description="The file ID of the uploaded PDF provided by the platform")] = None,
 ) -> str:
     """
     Extract text from a PDF document. This text can then be used by Puch AI's LLM for chat.
     """
+    if not puch_pdf_data:
+        return "Error: No PDF file ID was provided. Please upload a PDF to extract its text."
+
     try:
-        # Extract text from PDF
-        pdf_text = await PDFProcessor.process_pdf(pdf_data)
-        
+        file_id = puch_pdf_data
+        file_object = await mcp.get_file_by_id(file_id)
+
+        if not file_object or not hasattr(file_object, 'data'):
+            return "Error: Could not retrieve the file from the platform using the provided ID."
+
+        pdf_base64_data = file_object.data
+
+        pdf_text = await PDFProcessor.process_pdf(pdf_base64_data)
         if pdf_text.startswith("Error:"):
             return pdf_text
-        
-        # Format the extracted text nicely
+
         word_count = len(pdf_text.split())
         char_count = len(pdf_text)
-        
         result = [
             "📄 **PDF Text Extraction Complete**",
             "",
@@ -230,15 +237,12 @@ async def extract_pdf_text(
             "",
             "✅ **Ready for Chat:** The text has been extracted successfully. You can now ask questions about this content!"
         ]
-        
         return "\n".join(result)
-        
     except Exception as e:
         raise McpError(ErrorData(
             code=INTERNAL_ERROR,
             message=f"Failed to extract PDF text: {str(e)}"
         ))
-
 # --- Tool: generate_schedule ---
 ScheduleGeneratorDescription = RichToolDescription(
     description="Generate a daily or weekly schedule based on tasks and priorities",
