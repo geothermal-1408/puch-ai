@@ -13,7 +13,6 @@ import tempfile
 from datetime import datetime, timedelta
 import re
 from enum import Enum
-from whatsapp_duplicate import DuplicateFinderSession, DuplicateCleanupHelper
 
 # --- Load environment variables ---
 load_dotenv()
@@ -234,35 +233,110 @@ class SongRecommendationEngine:
             {"title": "Can't Stop the Feeling!", "artist": "Justin Timberlake", "spotify_url": "https://open.spotify.com/track/20I6sIOMTCkB6w7ryavxtO"},
             {"title": "Good as Hell", "artist": "Lizzo", "spotify_url": "https://open.spotify.com/track/1PckUlxKqWQs3RlWXVBLw3"},
             {"title": "Uptown Funk", "artist": "Mark Ronson ft. Bruno Mars", "spotify_url": "https://open.spotify.com/track/32OlwWuMpZ6b0aN2RZOeMS"},
-            {"title": "Walking on Sunshine", "artist": "Katrina and the Waves", "spotify_url": "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0"}
+            {"title": "Walking on Sunshine", "artist": "Katrina and the Waves", "spotify_url": "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0"},
+            {"title": "Gallan Goodiyaan", "artist": "Dil Dhadakne Do", "spotify_url": "https://open.spotify.com/track/0hA7gS5Z1nYV9wT6FQn0fP"},
+            {"title": "London Thumakda", "artist": "Queen", "spotify_url": "https://open.spotify.com/track/6Z8R6UsFuGXGtiIxiD8ISb"},
+            {"title": "Badtameez Dil", "artist": "Yeh Jawaani Hai Deewani", "spotify_url": "https://open.spotify.com/track/5xrtzzzikpG3BLbo4q1Yul"},
+            {"title": "Dil Dhadakne Do", "artist": "Zindagi Na Milegi Dobara", "spotify_url": "https://open.spotify.com/track/6ux8Z5EL3XgAhK04f6XhTQ"},
+            {"title": "Senorita", "artist": "Zindagi Na Milegi Dobara", "spotify_url": "https://open.spotify.com/track/0yL7M9fWG1of5QVm7s0A6l"},
+            {"title": "Desi Girl", "artist": "Dostana", "spotify_url": "https://open.spotify.com/track/1alW0sP3l41Z8nfdYizwDg"},
+            {"title": "Sweety Tera Drama", "artist": "Bareilly Ki Barfi", "spotify_url": "https://open.spotify.com/track/3b69GskD94Z6L4ltVlmftW"},
+            {"title": "Cutiepie", "artist": "Ae Dil Hai Mushkil", "spotify_url": "https://open.spotify.com/track/4Tq6ZOqKcW5mh3QmUF8k7P"},
+            {"title": "Tamma Tamma Again", "artist": "Badrinath Ki Dulhania", "spotify_url": "https://open.spotify.com/track/5jU9nlfVw6lMtmn3H6kPBi"},
+            {"title": "Bom Diggy Diggy", "artist": "Sonu Ke Titu Ki Sweety", "spotify_url": "https://open.spotify.com/track/3f6V3lC6tK2Xz8hZ5Y1C5D"},
+            {"title": "Kar Gayi Chull", "artist": "Kapoor & Sons", "spotify_url": "https://open.spotify.com/track/6VUPAx5iygBFwbdb8j6lT2"},
+            {"title": "Ban Ja Rani", "artist": "Tumhari Sulu", "spotify_url": "https://open.spotify.com/track/3dJ3NV1TGQYw3oG5xvsXoX"},
+            {"title": "Dil Chori", "artist": "Sonu Ke Titu Ki Sweety", "spotify_url": "https://open.spotify.com/track/6HvPOZ8nW10JpDRpN7Vscw"},
+            {"title": "Main Hoon Hero Tera", "artist": "Hero", "spotify_url": "https://open.spotify.com/track/7g0HDAnZVrQ4Fr5GZgL1VA"},
+            {"title": "Morni Banke", "artist": "Badhaai Ho", "spotify_url": "https://open.spotify.com/track/4Rb2pwK3mXg2vYrA8bmc4C"}
         ],
         "sad": [
             {"title": "Someone Like You", "artist": "Adele", "spotify_url": "https://open.spotify.com/track/4bHsxqR3GMrXTxEPLuK5ue"},
             {"title": "Mad World", "artist": "Gary Jules", "spotify_url": "https://open.spotify.com/track/3JOVTQ5h8HGFnDdp4VT3MP"},
             {"title": "The Sound of Silence", "artist": "Simon & Garfunkel", "spotify_url": "https://open.spotify.com/track/7GElp5u1l2Xfgd5z8L8PaL"},
             {"title": "Hurt", "artist": "Johnny Cash", "spotify_url": "https://open.spotify.com/track/2o4H9vWfjkJWKlvr5wlZRX"},
-            {"title": "Black", "artist": "Pearl Jam", "spotify_url": "https://open.spotify.com/track/4XblTJYZEn4y3SXWNx9JRt"}
+            {"title": "Black", "artist": "Pearl Jam", "spotify_url": "https://open.spotify.com/track/4XblTJYZEn4y3SXWNx9JRt"},
+            {"title": "Channa Mereya", "artist": "Ae Dil Hai Mushkil", "spotify_url": "https://open.spotify.com/track/0xZCuhNNG8M3p9lVf1hY1n"},
+            {"title": "Kabira (Encore)", "artist": "Yeh Jawaani Hai Deewani", "spotify_url": "https://open.spotify.com/track/0CKa42Jqrc9fSFbDjePaXP"},
+            {"title": "Agar Tum Saath Ho", "artist": "Tamasha", "spotify_url": "https://open.spotify.com/track/6GG2ZQ0ehX7a1ztQlBPm4M"},
+            {"title": "Tujhe Kitna Chahne Lage", "artist": "Kabir Singh", "spotify_url": "https://open.spotify.com/track/4mRDTkY3MJltFIKQ6d1kDa"},
+            {"title": "Kal Ho Naa Ho", "artist": "Kal Ho Naa Ho", "spotify_url": "https://open.spotify.com/track/5FpJYVqQZ2n7tJXhFhZLct"},
+            {"title": "Tum Hi Ho", "artist": "Aashiqui 2", "spotify_url": "https://open.spotify.com/track/1k9WcUzZ4FfoT8q1yHn2kB"},
+            {"title": "Phir Bhi Tumko Chaahunga", "artist": "Half Girlfriend", "spotify_url": "https://open.spotify.com/track/4kflIGfjdZJW4ot2ioixTB"},
+            {"title": "Judaai", "artist": "Badlapur", "spotify_url": "https://open.spotify.com/track/3r8jhJtQUZPncJcfWc8McC"},
+            {"title": "Ae Dil Hai Mushkil (Title Track)", "artist": "Ae Dil Hai Mushkil", "spotify_url": "https://open.spotify.com/track/6ggxLwEfdjwGstn2mafqy1"},
+            {"title": "Hasi Ban Gaye", "artist": "Hamari Adhuri Kahani", "spotify_url": "https://open.spotify.com/track/4fek1TRV9dxHn1h3J3n6Lz"},
+            {"title": "Khairiyat", "artist": "Chhichhore", "spotify_url": "https://open.spotify.com/track/7cfpLMsH3oGDmslEdOBYib"},
+            {"title": "Tera Ban Jaunga", "artist": "Kabir Singh", "spotify_url": "https://open.spotify.com/track/7kQX9FqU8oUTgMy4QdTe6P"},
+            {"title": "Pachtaoge", "artist": "Arijit Singh", "spotify_url": "https://open.spotify.com/track/4kROu4c2TStRmNsGhDpumX"},
+            {"title": "Bekhayali", "artist": "Kabir Singh", "spotify_url": "https://open.spotify.com/track/6GzApXoBQiiAjak3tOQnFh"},
+            {"title": "Tadap Tadap", "artist": "Hum Dil De Chuke Sanam", "spotify_url": "https://open.spotify.com/track/5Lk4I1R7HeFwwKogF4Zz3P"}
         ],
         "angry": [
             {"title": "Break Stuff", "artist": "Limp Bizkit", "spotify_url": "https://open.spotify.com/track/5bIgwJD4kWQ4LVgUhvnEQs"},
             {"title": "Bodies", "artist": "Drowning Pool", "spotify_url": "https://open.spotify.com/track/4KNMTEhkEKmjZhb2Dn6VHh"},
             {"title": "Killing in the Name", "artist": "Rage Against the Machine", "spotify_url": "https://open.spotify.com/track/59WN2psjkt1tyaxjspN8fp"},
             {"title": "Chop Suey!", "artist": "System of a Down", "spotify_url": "https://open.spotify.com/track/2DlHlPMa4M17kufBvI2lEN"},
-            {"title": "In the End", "artist": "Linkin Park", "spotify_url": "https://open.spotify.com/track/60a0Rd6pjrkxjPbaKzXjfq"}
+            {"title": "In the End", "artist": "Linkin Park", "spotify_url": "https://open.spotify.com/track/60a0Rd6pjrkxjPbaKzXjfq"},
+            {"title": "Malhari", "artist": "Bajirao Mastani", "spotify_url": "https://open.spotify.com/track/0lYXgsK9e1wZ3yS1x4Hivk"},
+            {"title": "Zinda", "artist": "Bhaag Milkha Bhaag", "spotify_url": "https://open.spotify.com/track/1R6rTUkPGI2R3UfQnDyWHq"},
+            {"title": "Sultan (Title Track)", "artist": "Sultan", "spotify_url": "https://open.spotify.com/track/3yUoQTPFwOZJkV5U5LJxkP"},
+            {"title": "Sher Aaya Sher", "artist": "Gully Boy", "spotify_url": "https://open.spotify.com/track/1mSb5hFEPxZ1bJ5aRe4QFk"},
+            {"title": "Apna Time Aayega", "artist": "Gully Boy", "spotify_url": "https://open.spotify.com/track/6Gf5L2ZgFJvWdoZnKCR3cK"},
+            {"title": "Bhaag DK Bose", "artist": "Delhi Belly", "spotify_url": "https://open.spotify.com/track/7L10ZfM1U3d3W5lqG7uZtn"},
+            {"title": "Ziddi Dil", "artist": "Mary Kom", "spotify_url": "https://open.spotify.com/track/4dd6tP6uEUkPCr6mjhRZ1g"},
+            {"title": "Mukkala Muqabala", "artist": "Street Dancer 3D", "spotify_url": "https://open.spotify.com/track/2oYkwfNjFJZX4sO0e6D2W0"},
+            {"title": "Dangal Title Track", "artist": "Dangal", "spotify_url": "https://open.spotify.com/track/0RkCukKw9p1Mz4sOGJbnfh"},
+            {"title": "Dhakad", "artist": "Dangal", "spotify_url": "https://open.spotify.com/track/7kADdZJpFT9gLgoHndpCBF"},
+            {"title": "Desi Kalakaar", "artist": "Yo Yo Honey Singh", "spotify_url": "https://open.spotify.com/track/0P3oVJBFOv3TDxS0hGxFZC"},
+            {"title": "All Black", "artist": "Raftaar, Badshah", "spotify_url": "https://open.spotify.com/track/6iZ9EqXzPWnMAs1y8r9IJK"},
+            {"title": "Bandook Meri Laila", "artist": "A Gentleman", "spotify_url": "https://open.spotify.com/track/3vMQV8HT5PaLMkZVZrcrNo"},
+            {"title": "Swag Mera Desi", "artist": "Raftaar", "spotify_url": "https://open.spotify.com/track/7Kthn4zZbL3McZScCQe2Ew"},
+            {"title": "Sher Ki Daawat", "artist": "Dishoom", "spotify_url": "https://open.spotify.com/track/4SwjUHQoVQyDUBFcGioJtr"}
         ],
         "excited": [
             {"title": "Thunder", "artist": "Imagine Dragons", "spotify_url": "https://open.spotify.com/track/0tBbt8CrmxbjRP0pueQkyU"},
             {"title": "Pump It", "artist": "The Black Eyed Peas", "spotify_url": "https://open.spotify.com/track/7Jh1bpe76CNTCgdgAdBw4Z"},
             {"title": "Eye of the Tiger", "artist": "Survivor", "spotify_url": "https://open.spotify.com/track/2KH16WveTQWT6KOG9Rg6e2"},
             {"title": "We Will Rock You", "artist": "Queen", "spotify_url": "https://open.spotify.com/track/4pbJqGIASGPr0ZpGpnWkDn"},
-            {"title": "Don't Stop Believin'", "artist": "Journey", "spotify_url": "https://open.spotify.com/track/4bHsxqR3GMrXTxEPLuK5ue"}
-        ],
+            {"title": "Don't Stop Believin'", "artist": "Journey", "spotify_url": "https://open.spotify.com/track/4bHsxqR3GMrXTxEPLuK5ue"},
+            {"title": "Nashe Si Chadh Gayi", "artist": "Befikre", "spotify_url": "https://open.spotify.com/track/4S7xBBfB4f9z1pBDEWIslU"},
+            {"title": "Kala Chashma", "artist": "Baar Baar Dekho", "spotify_url": "https://open.spotify.com/track/5QTxFnGygVM4jFQiBovmRo"},
+            {"title": "Morni Banke", "artist": "Badhaai Ho", "spotify_url": "https://open.spotify.com/track/4Rb2pwK3mXg2vYrA8bmc4C"},
+            {"title": "Abhi Toh Party Shuru Hui Hai", "artist": "Khoobsurat", "spotify_url": "https://open.spotify.com/track/5o4XqfJgYfOImU2Bj8MABJ"},
+            {"title": "High Heels", "artist": "Ki & Ka", "spotify_url": "https://open.spotify.com/track/7qgX91X5QROqOPvkd7vC6Y"},
+            {"title": "Kar Gayi Chull", "artist": "Kapoor & Sons", "spotify_url": "https://open.spotify.com/track/6VUPAx5iygBFwbdb8j6lT2"},
+            {"title": "Dil Dhadakne Do", "artist": "Zindagi Na Milegi Dobara", "spotify_url": "https://open.spotify.com/track/6ux8Z5EL3XgAhK04f6XhTQ"},
+            {"title": "Senorita", "artist": "Zindagi Na Milegi Dobara", "spotify_url": "https://open.spotify.com/track/0yL7M9fWG1of5QVm7s0A6l"},
+            {"title": "Party All Night", "artist": "Boss", "spotify_url": "https://open.spotify.com/track/6ZzAwEdLRgG1X2TgkpMJHc"},
+            {"title": "Selfie Le Le Re", "artist": "Bajrangi Bhaijaan", "spotify_url": "https://open.spotify.com/track/0yybapnYapD42QBM9RrFdn"},
+            {"title": "Cutiepie", "artist": "Ae Dil Hai Mushkil", "spotify_url": "https://open.spotify.com/track/4Tq6ZOqKcW5mh3QmUF8k7P"},
+            {"title": "Galti Se Mistake", "artist": "Jagga Jasoos", "spotify_url": "https://open.spotify.com/track/0flxjloW2aG7Gz9uvFG1DY"},
+            {"title": "Hook Up Song", "artist": "Student of the Year 2", "spotify_url": "https://open.spotify.com/track/3Sxtox7brnG9rVt7lZnZqE"},
+            {"title": "Slow Motion", "artist": "Bharat", "spotify_url": "https://open.spotify.com/track/3bQYZjIFlEbnZq6I0H0kHw"},
+            {"title": "Proper Patola", "artist": "Namaste England", "spotify_url": "https://open.spotify.com/track/1ZuQzcdhwzZyFUDZpR9gOn"}
+            ],
         "neutral": [
             {"title": "Shape of You", "artist": "Ed Sheeran", "spotify_url": "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3"},
             {"title": "Blinding Lights", "artist": "The Weeknd", "spotify_url": "https://open.spotify.com/track/0VjIjW4GlULA0mG8km5iU8"},
             {"title": "Watermelon Sugar", "artist": "Harry Styles", "spotify_url": "https://open.spotify.com/track/6UelLqGlWMcVH1E5c4H7lY"},
             {"title": "Levitating", "artist": "Dua Lipa", "spotify_url": "https://open.spotify.com/track/463CkQjx2Zk1yXoBuierM9"},
-            {"title": "Stay", "artist": "The Kid LAROI & Justin Bieber", "spotify_url": "https://open.spotify.com/track/5HCyWlXZPP0y6Gqq8TgA20"}
+            {"title": "Stay", "artist": "The Kid LAROI & Justin Bieber", "spotify_url": "https://open.spotify.com/track/5HCyWlXZPP0y6Gqq8TgA20"},
+            {"title": "Raabta", "artist": "Agent Vinod", "spotify_url": "https://open.spotify.com/track/6j0vm6cwSGYJdLzD4FFKkD"},
+            {"title": "Jeene Laga Hoon", "artist": "Ramaiya Vastavaiya", "spotify_url": "https://open.spotify.com/track/3m3cvFY8P1uKJuJs8YoO2M"},
+            {"title": "Hawayein", "artist": "Jab Harry Met Sejal", "spotify_url": "https://open.spotify.com/track/1H4bnCw3J9Tz3LwFTQixNm"},
+            {"title": "Kaise Hua", "artist": "Kabir Singh", "spotify_url": "https://open.spotify.com/track/0qlWcS66ohOIi0M8JZwPft"},
+            {"title": "Tera Yaar Hoon Main", "artist": "Sonu Ke Titu Ki Sweety", "spotify_url": "https://open.spotify.com/track/1ZLrIVa8p0VaOS9uQ8vO0V"},
+            {"title": "Kuch Kuch Hota Hai", "artist": "Kuch Kuch Hota Hai", "spotify_url": "https://open.spotify.com/track/5g7hUZ9kZyW0R0f6D0AzB5"},
+            {"title": "Dil Diyan Gallan", "artist": "Tiger Zinda Hai", "spotify_url": "https://open.spotify.com/track/7okSUtN66ckbL5ItzKH5VJ"},
+            {"title": "Pee Loon", "artist": "Once Upon A Time In Mumbaai", "spotify_url": "https://open.spotify.com/track/1hxYrbz4kDlVvfI9WKvBdv"},
+            {"title": "Sooraj Dooba Hain", "artist": "Roy", "spotify_url": "https://open.spotify.com/track/1RJ9UdtD1U7L1EGHhGkP5Q"},
+            {"title": "Tu Chale", "artist": "I", "spotify_url": "https://open.spotify.com/track/3LtnR1TzN8fKvbJyyagpsu"},
+            {"title": "Kaun Tujhe", "artist": "M.S. Dhoni", "spotify_url": "https://open.spotify.com/track/6Fj2olT9XQBRkhrzXK7Cjp"},
+            {"title": "Muskurane", "artist": "CityLights", "spotify_url": "https://open.spotify.com/track/4muPiHmZ7YDDz6DDjClVTe"},
+            {"title": "Bol Do Na Zara", "artist": "Azhar", "spotify_url": "https://open.spotify.com/track/3S6tfHQsHDQ8gj2unXcTjv"},
+            {"title": "Saibo", "artist": "Shor In The City", "spotify_url": "https://open.spotify.com/track/2bJz8IhECszPbgYGb4p4NB"},
+            {"title": "Hasi", "artist": "Hamari Adhuri Kahani", "spotify_url": "https://open.spotify.com/track/4fek1TRV9dxHn1h3J3n6Lz"}
         ]
     }
     
@@ -913,6 +987,24 @@ async def get_weather(
 # --- Run MCP Server ---
 async def main():
     print("🚀 Starting MCP server on http://0.0.0.0:8086")
+    print("\n📋 Available Tools:")
+    print("=" * 50)
+    tools = [
+        "🔍 validate - Required validation tool for Puch AI",
+        "📄 extract_pdf_text - Extract text content from PDF files",
+        "🌟 generate_mood_routine - Generate mood-based daily routines",
+        "📝 manage_todo_list - Manage personal todo list (add/complete/remove/view)",
+        "📅 generate_schedule - Generate time-blocked schedules with mood integration",
+        "🎵 recommend_songs - Get mood-based song recommendations from Spotify",
+        "🖼️ make_img_black_and_white - Convert images to black and white",
+        "☀️ get_weather - Get current weather information for any city"
+    ]
+    for tool in tools:
+        print(f"  {tool}")
+    print("=" * 50)
+    print("✅ Server ready for connections!")
+    print("💡 Connect using: /mcp connect https://your-domain.ngrok.app/mcp your_auth_token")
+    print("")
     await mcp.run_async("streamable-http", host="0.0.0.0", port=8086)
 
 if __name__ == "__main__":
