@@ -2,14 +2,16 @@ import asyncio
 from typing import Annotated
 import os
 from dotenv import load_dotenv
-from fastmcp.server import FastMCP
-from fastmcp.server.auth.providers.bearer import BearerAuthProvider, RSAKeyPair
+from fastmcp.server import FastMCP # type: ignore
+from fastmcp.server.auth.providers.bearer import BearerAuthProvider, RSAKeyPair # type: ignore
 from mcp import ErrorData, McpError
 from mcp.server.auth.provider import AccessToken
 from mcp.types import TextContent, ImageContent, INVALID_PARAMS, INTERNAL_ERROR
 from pydantic import BaseModel, Field, AnyUrl
 import tempfile
 from datetime import datetime, timedelta
+import re
+from enum import Enum
 
 # --- Load environment variables ---
 load_dotenv()
@@ -43,6 +45,89 @@ class RichToolDescription(BaseModel):
     use_when: str
     side_effects: str | None = None
 
+# --- SONG RECOMMENDATION CLASSES ---
+class Mood(Enum):
+    HAPPY = "happy"
+    SAD = "sad"
+    NEUTRAL = "neutral"
+    ANGRY = "angry"
+    EXCITED = "excited"
+
+class SongRecommendationEngine:
+    """Engine for analyzing mood and recommending songs"""
+    
+    # Hardcoded curated playlists for each mood
+    PLAYLISTS = {
+        "happy": [
+            {"title": "Happy", "artist": "Pharrell Williams", "spotify_url": "https://open.spotify.com/track/60nZcImufyMA1MKQY3dcCH"},
+            {"title": "Can't Stop the Feeling!", "artist": "Justin Timberlake", "spotify_url": "https://open.spotify.com/track/20I6sIOMTCkB6w7ryavxtO"},
+            {"title": "Good as Hell", "artist": "Lizzo", "spotify_url": "https://open.spotify.com/track/1PckUlxKqWQs3RlWXVBLw3"},
+            {"title": "Uptown Funk", "artist": "Mark Ronson ft. Bruno Mars", "spotify_url": "https://open.spotify.com/track/32OlwWuMpZ6b0aN2RZOeMS"},
+            {"title": "Walking on Sunshine", "artist": "Katrina and the Waves", "spotify_url": "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0"}
+        ],
+        "sad": [
+            {"title": "Someone Like You", "artist": "Adele", "spotify_url": "https://open.spotify.com/track/4bHsxqR3GMrXTxEPLuK5ue"},
+            {"title": "Mad World", "artist": "Gary Jules", "spotify_url": "https://open.spotify.com/track/3JOVTQ5h8HGFnDdp4VT3MP"},
+            {"title": "The Sound of Silence", "artist": "Simon & Garfunkel", "spotify_url": "https://open.spotify.com/track/7GElp5u1l2Xfgd5z8L8PaL"},
+            {"title": "Hurt", "artist": "Johnny Cash", "spotify_url": "https://open.spotify.com/track/2o4H9vWfjkJWKlvr5wlZRX"},
+            {"title": "Black", "artist": "Pearl Jam", "spotify_url": "https://open.spotify.com/track/4XblTJYZEn4y3SXWNx9JRt"}
+        ],
+        "angry": [
+            {"title": "Break Stuff", "artist": "Limp Bizkit", "spotify_url": "https://open.spotify.com/track/5bIgwJD4kWQ4LVgUhvnEQs"},
+            {"title": "Bodies", "artist": "Drowning Pool", "spotify_url": "https://open.spotify.com/track/4KNMTEhkEKmjZhb2Dn6VHh"},
+            {"title": "Killing in the Name", "artist": "Rage Against the Machine", "spotify_url": "https://open.spotify.com/track/59WN2psjkt1tyaxjspN8fp"},
+            {"title": "Chop Suey!", "artist": "System of a Down", "spotify_url": "https://open.spotify.com/track/2DlHlPMa4M17kufBvI2lEN"},
+            {"title": "In the End", "artist": "Linkin Park", "spotify_url": "https://open.spotify.com/track/60a0Rd6pjrkxjPbaKzXjfq"}
+        ],
+        "excited": [
+            {"title": "Thunder", "artist": "Imagine Dragons", "spotify_url": "https://open.spotify.com/track/0tBbt8CrmxbjRP0pueQkyU"},
+            {"title": "Pump It", "artist": "The Black Eyed Peas", "spotify_url": "https://open.spotify.com/track/7Jh1bpe76CNTCgdgAdBw4Z"},
+            {"title": "Eye of the Tiger", "artist": "Survivor", "spotify_url": "https://open.spotify.com/track/2KH16WveTQWT6KOG9Rg6e2"},
+            {"title": "We Will Rock You", "artist": "Queen", "spotify_url": "https://open.spotify.com/track/4pbJqGIASGPr0ZpGpnWkDn"},
+            {"title": "Don't Stop Believin'", "artist": "Journey", "spotify_url": "https://open.spotify.com/track/4bHsxqR3GMrXTxEPLuK5ue"}
+        ],
+        "neutral": [
+            {"title": "Shape of You", "artist": "Ed Sheeran", "spotify_url": "https://open.spotify.com/track/7qiZfU4dY1lWllzX7mPBI3"},
+            {"title": "Blinding Lights", "artist": "The Weeknd", "spotify_url": "https://open.spotify.com/track/0VjIjW4GlULA0mG8km5iU8"},
+            {"title": "Watermelon Sugar", "artist": "Harry Styles", "spotify_url": "https://open.spotify.com/track/6UelLqGlWMcVH1E5c4H7lY"},
+            {"title": "Levitating", "artist": "Dua Lipa", "spotify_url": "https://open.spotify.com/track/463CkQjx2Zk1yXoBuierM9"},
+            {"title": "Stay", "artist": "The Kid LAROI & Justin Bieber", "spotify_url": "https://open.spotify.com/track/5HCyWlXZPP0y6Gqq8TgA20"}
+        ]
+    }
+    
+    # Keywords for mood detection
+    MOOD_KEYWORDS = {
+        "happy": ["happy", "joy", "excited", "great", "amazing", "wonderful", "fantastic", "love", "good", "smile", "laugh", "cheerful"],
+        "sad": ["sad", "depressed", "down", "upset", "hurt", "cry", "lonely", "heartbreak", "miss", "lost", "blue", "melancholy"],
+        "angry": ["angry", "mad", "furious", "hate", "annoyed", "frustrated", "rage", "pissed", "irritated", "livid"],
+        "excited": ["excited", "pumped", "hyped", "energy", "party", "celebration", "workout", "motivated", "adrenaline", "intense"],
+        "neutral": ["okay", "fine", "normal", "regular", "whatever", "meh", "calm", "peaceful", "relaxed"]
+    }
+    
+    @classmethod
+    def analyze_mood(cls, text: str) -> str:
+        """Analyze text and return the detected mood"""
+        text_lower = text.lower()
+        mood_scores = {mood: 0 for mood in cls.MOOD_KEYWORDS.keys()}
+        
+        # Count keyword matches for each mood
+        for mood, keywords in cls.MOOD_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in text_lower:
+                    mood_scores[mood] += 1
+        
+        # Return the mood with highest score, default to neutral
+        detected_mood = max(mood_scores, key=mood_scores.get)
+        if mood_scores[detected_mood] == 0:
+            detected_mood = "neutral"
+            
+        return detected_mood
+    
+    @classmethod
+    def get_recommendations(cls, mood: str, count: int = 5) -> list:
+        """Get song recommendations for a specific mood"""
+        return cls.PLAYLISTS.get(mood, cls.PLAYLISTS["neutral"])[:count]
+
 # --- PDF Processing Class ---
 class PDFProcessor:
     @staticmethod
@@ -55,48 +140,38 @@ class PDFProcessor:
         from io import BytesIO
         
         try:
-        # If pdf_data is base64 encoded, decode it
-            if isinstance(pdf_data, str):
-                try:
-                    pdf_bytes = base64.b64decode(pdf_data)
-                except:
-                    # If not base64, assume it's already bytes
-                    pdf_bytes = pdf_data.encode() if isinstance(pdf_data, str) else pdf_data
-            else:
-                pdf_bytes = pdf_data
-        
-        # Create a BytesIO object from the PDF data
+            # Decode base64 data
+            try:
+                pdf_bytes = base64.b64decode(pdf_data)
+            except Exception as e:
+                return f"Error: Failed to decode PDF data - {str(e)}"
+            
+            # Create BytesIO object
             pdf_stream = BytesIO(pdf_bytes)
             
+            # Extract text from PDF
             text = ""
             try:
-                pdf_reader = PyPDF2.PdfReader(pdf_stream)
+                pdf_reader = PdfReader(pdf_stream)
                 
-                # Check if pdf_reader is valid and has pages
-                if pdf_reader is None:
-                    return "Error: Failed to create PDF reader"
-                
-                if not hasattr(pdf_reader, 'pages') or pdf_reader.pages is None:
-                    return "Error: PDF reader could not access pages"
-                
-                # Check if PDF has pages
                 if len(pdf_reader.pages) == 0:
                     return "Error: PDF appears to be empty"
                 
                 # Extract text from all pages
-                for page in pdf_reader.pages:
-                    if page is not None:
-                        extracted_text = page.extract_text()
-                        if extracted_text:
-                            text += extracted_text + "\n"
-                            
-            except PdfReadError as e:
-                return f"Error: Invalid or corrupted PDF file - {str(e)}"
+                for page_num, page in enumerate(pdf_reader.pages):
+                    try:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
+                    except Exception as page_error:
+                        text += f"\n--- Page {page_num + 1} ---\n[Error extracting page: {str(page_error)}]\n"
+                        continue
+                        
             except Exception as e:
-                return f"Error reading PDF: {str(e)}"
+                return f"Error: Failed to read PDF - {str(e)}"
             
             if not text.strip():
-                return "Error: No text could be extracted from the PDF"
+                return "Error: No text could be extracted from the PDF. The PDF might be image-based or password protected."
             
             return text.strip()
             
@@ -116,35 +191,53 @@ mcp = FastMCP(
 async def validate() -> str:
     return MY_NUMBER
 
-# --- Tool: chat_with_pdf ---
-ChatWithPDFDescription = RichToolDescription(
-    description="Analyze and answer questions about PDF documents",
-    use_when="User provides a PDF document and wants to ask questions about its content",
-    side_effects="The PDF content will be processed and analyzed"
+# --- Tool: extract_pdf_text ---
+ExtractPDFTextDescription = RichToolDescription(
+    description="Extract text content from PDF files for analysis and chat",
+    use_when="User uploads a PDF file and wants to extract text content for further processing or chat",
+    side_effects="Returns extracted text from all pages of the PDF"
 )
 
-@mcp.tool(description=ChatWithPDFDescription.model_dump_json())
-async def chat_with_pdf(
+@mcp.tool(description=ExtractPDFTextDescription.model_dump_json())
+async def extract_pdf_text(
     pdf_data: Annotated[str, Field(description="Base64-encoded PDF file data")],
-    question: Annotated[str, Field(description="Question about the PDF content")],
 ) -> str:
     """
-    Analyze a PDF document and answer questions about its content.
+    Extract text from a PDF document. This text can then be used by Puch AI's LLM for chat.
     """
-    # First extract text from PDF
-    pdf_text = await PDFProcessor.process_pdf(pdf_data)
-
-    if "summary" in question.lower():
-        return f"PDF Summary (first 500 chars):\n\n{pdf_text[:500]}..."
-    elif "page count" in question.lower():
-        return "This is a simple text extractor. For page count, please use a full PDF processing tool."
-    else:
-        return (
-            f"PDF Content Analysis\n\n"
-            f"Question: {question}\n\n"
-            f"Relevant content from PDF (first 1000 chars):\n\n"
-            f"{pdf_text[:1000]}..."
-        )
+    try:
+        # Extract text from PDF
+        pdf_text = await PDFProcessor.process_pdf(pdf_data)
+        
+        if pdf_text.startswith("Error:"):
+            return pdf_text
+        
+        # Format the extracted text nicely
+        word_count = len(pdf_text.split())
+        char_count = len(pdf_text)
+        
+        result = [
+            "📄 **PDF Text Extraction Complete**",
+            "",
+            f"📊 **Statistics:**",
+            f"• Word count: {word_count:,}",
+            f"• Character count: {char_count:,}",
+            "",
+            "📝 **Extracted Text:**",
+            "=" * 50,
+            pdf_text,
+            "=" * 50,
+            "",
+            "✅ **Ready for Chat:** The text has been extracted successfully. You can now ask questions about this content!"
+        ]
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        raise McpError(ErrorData(
+            code=INTERNAL_ERROR,
+            message=f"Failed to extract PDF text: {str(e)}"
+        ))
 
 # --- Tool: generate_schedule ---
 ScheduleGeneratorDescription = RichToolDescription(
@@ -224,6 +317,71 @@ async def generate_schedule(
             message=f"Invalid schedule parameters: {str(e)}"
         ))
 
+# --- NEW TOOL: Song Recommendations ---
+SongRecommendationDescription = RichToolDescription(
+    description="Analyze user's mood from text and recommend songs from curated Spotify playlists",
+    use_when="User expresses emotions, asks for music recommendations, or mentions their current mood/feelings",
+    side_effects="Returns personalized song recommendations with Spotify links based on detected or specified mood"
+)
+
+@mcp.tool(description=SongRecommendationDescription.model_dump_json())
+async def recommend_songs(
+    user_text: Annotated[str, Field(description="Text expressing the user's current mood, feelings, or music request")],
+    mood_override: Annotated[str | None, Field(description="Manually specify mood (happy/sad/angry/excited/neutral)")] = None,
+    count: Annotated[int, Field(description="Number of songs to recommend (1-5)", ge=1, le=5)] = 5,
+) -> str:
+    """
+    Analyze user's mood from their text and recommend appropriate songs from curated playlists.
+    Supports automatic mood detection or manual mood specification.
+    """
+    try:
+        # Use manual mood if provided, otherwise analyze text
+        if mood_override and mood_override.lower() in ["happy", "sad", "angry", "excited", "neutral"]:
+            detected_mood = mood_override.lower()
+            mood_source = "manually specified"
+        else:
+            detected_mood = SongRecommendationEngine.analyze_mood(user_text)
+            mood_source = "detected from your message"
+        
+        # Get song recommendations
+        songs = SongRecommendationEngine.get_recommendations(detected_mood, count)
+        
+        # Format response
+        mood_emoji = {
+            "happy": "😊",
+            "sad": "😢", 
+            "angry": "😠",
+            "excited": "🚀",
+            "neutral": "😐"
+        }
+        
+        result = [
+            f"🎵 **Song Recommendations Based on Your Mood**",
+            f"",
+            f"**Detected Mood:** {mood_emoji.get(detected_mood, '🎵')} {detected_mood.title()} ({mood_source})",
+            f"**Your Message:** \"{user_text}\"",
+            f"",
+            f"**🎧 Recommended Songs:**"
+        ]
+        
+        for i, song in enumerate(songs, 1):
+            result.append(f"{i}. **{song['title']}** by {song['artist']}")
+            result.append(f"   🔗 [Listen on Spotify]({song['spotify_url']})")
+        
+        result.extend([
+            f"",
+            f"💡 **Tip:** Click the Spotify links to listen to these tracks!",
+            f"🔄 Want different recommendations? Try specifying a different mood!"
+        ])
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        raise McpError(ErrorData(
+            code=INTERNAL_ERROR,
+            message=f"Failed to generate song recommendations: {str(e)}"
+        ))
+
 MAKE_IMG_BLACK_AND_WHITE_DESCRIPTION = RichToolDescription(
     description="Convert an image to black and white and save it.",
     use_when="Use this tool when the user provides an image URL and requests it to be converted to black and white.",
@@ -261,216 +419,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-# import asyncio
-# from typing import Annotated
-# import os
-# from dotenv import load_dotenv
-# from fastmcp import FastMCP
-# from fastmcp.server.auth.providers.bearer import BearerAuthProvider, RSAKeyPair
-# from mcp import ErrorData, McpError
-# from mcp.server.auth.provider import AccessToken
-# from mcp.types import TextContent, ImageContent, INVALID_PARAMS, INTERNAL_ERROR
-# from pydantic import BaseModel, Field, AnyUrl
-
-# import markdownify
-# import httpx
-# import readabilipy
-
-# # --- Load environment variables ---
-# load_dotenv()
-
-# TOKEN = os.environ.get("AUTH_TOKEN")
-# MY_NUMBER = os.environ.get("MY_NUMBER")
-
-# assert TOKEN is not None, "Please set AUTH_TOKEN in your .env file"
-# assert MY_NUMBER is not None, "Please set MY_NUMBER in your .env file"
-
-# # --- Auth Provider ---
-# class SimpleBearerAuthProvider(BearerAuthProvider):
-#     def __init__(self, token: str):
-#         k = RSAKeyPair.generate()
-#         super().__init__(public_key=k.public_key, jwks_uri=None, issuer=None, audience=None)
-#         self.token = token
-
-#     async def load_access_token(self, token: str) -> AccessToken | None:
-#         if token == self.token:
-#             return AccessToken(
-#                 token=token,
-#                 client_id="puch-client",
-#                 scopes=["*"],
-#                 expires_at=None,
-#             )
-#         return None
-
-# # --- Rich Tool Description model ---
-# class RichToolDescription(BaseModel):
-#     description: str
-#     use_when: str
-#     side_effects: str | None = None
-
-# # --- Fetch Utility Class ---
-# class Fetch:
-#     USER_AGENT = "Puch/1.0 (Autonomous)"
-
-#     @classmethod
-#     async def fetch_url(
-#         cls,
-#         url: str,
-#         user_agent: str,
-#         force_raw: bool = False,
-#     ) -> tuple[str, str]:
-#         async with httpx.AsyncClient() as client:
-#             try:
-#                 response = await client.get(
-#                     url,
-#                     follow_redirects=True,
-#                     headers={"User-Agent": user_agent},
-#                     timeout=30,
-#                 )
-#             except httpx.HTTPError as e:
-#                 raise McpError(ErrorData(code=INTERNAL_ERROR, message=f"Failed to fetch {url}: {e!r}"))
-
-#             if response.status_code >= 400:
-#                 raise McpError(ErrorData(code=INTERNAL_ERROR, message=f"Failed to fetch {url} - status code {response.status_code}"))
-
-#             page_raw = response.text
-
-#         content_type = response.headers.get("content-type", "")
-#         is_page_html = "text/html" in content_type
-
-#         if is_page_html and not force_raw:
-#             return cls.extract_content_from_html(page_raw), ""
-
-#         return (
-#             page_raw,
-#             f"Content type {content_type} cannot be simplified to markdown, but here is the raw content:\n",
-#         )
-
-#     @staticmethod
-#     def extract_content_from_html(html: str) -> str:
-#         """Extract and convert HTML content to Markdown format."""
-#         ret = readabilipy.simple_json.simple_json_from_html_string(html, use_readability=True)
-#         if not ret or not ret.get("content"):
-#             return "<error>Page failed to be simplified from HTML</error>"
-#         content = markdownify.markdownify(ret["content"], heading_style=markdownify.ATX)
-#         return content
-
-#     @staticmethod
-#     async def google_search_links(query: str, num_results: int = 5) -> list[str]:
-#         """
-#         Perform a scoped DuckDuckGo search and return a list of job posting URLs.
-#         (Using DuckDuckGo because Google blocks most programmatic scraping.)
-#         """
-#         ddg_url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-#         links = []
-
-#         async with httpx.AsyncClient() as client:
-#             resp = await client.get(ddg_url, headers={"User-Agent": Fetch.USER_AGENT})
-#             if resp.status_code != 200:
-#                 return ["<error>Failed to perform search.</error>"]
-
-#         from bs4 import BeautifulSoup
-#         soup = BeautifulSoup(resp.text, "html.parser")
-#         for a in soup.find_all("a", class_="result__a", href=True):
-#             href = a["href"]
-#             if "http" in href:
-#                 links.append(href)
-#             if len(links) >= num_results:
-#                 break
-
-#         return links or ["<error>No results found.</error>"]
-
-# # --- MCP Server Setup ---
-# mcp = FastMCP(
-#     "Job Finder MCP Server",
-#     auth=SimpleBearerAuthProvider(TOKEN),
-# )
-
-# # --- Tool: validate (required by Puch) ---
-# @mcp.tool
-# async def validate() -> str:
-#     return MY_NUMBER
-
-# # --- Tool: job_finder (now smart!) ---
-# JobFinderDescription = RichToolDescription(
-#     description="Smart job tool: analyze descriptions, fetch URLs, or search jobs based on free text.",
-#     use_when="Use this to evaluate job descriptions or search for jobs using freeform goals.",
-#     side_effects="Returns insights, fetched job descriptions, or relevant job links.",
-# )
-
-# @mcp.tool(description=JobFinderDescription.model_dump_json())
-# async def job_finder(
-#     user_goal: Annotated[str, Field(description="The user's goal (can be a description, intent, or freeform query)")],
-#     job_description: Annotated[str | None, Field(description="Full job description text, if available.")] = None,
-#     job_url: Annotated[AnyUrl | None, Field(description="A URL to fetch a job description from.")] = None,
-#     raw: Annotated[bool, Field(description="Return raw HTML content if True")] = False,
-# ) -> str:
-#     """
-#     Handles multiple job discovery methods: direct description, URL fetch, or freeform search query.
-#     """
-#     if job_description:
-#         return (
-#             f"📝 **Job Description Analysis**\n\n"
-#             f"---\n{job_description.strip()}\n---\n\n"
-#             f"User Goal: **{user_goal}**\n\n"
-#             f"💡 Suggestions:\n- Tailor your resume.\n- Evaluate skill match.\n- Consider applying if relevant."
-#         )
-
-#     if job_url:
-#         content, _ = await Fetch.fetch_url(str(job_url), Fetch.USER_AGENT, force_raw=raw)
-#         return (
-#             f"🔗 **Fetched Job Posting from URL**: {job_url}\n\n"
-#             f"---\n{content.strip()}\n---\n\n"
-#             f"User Goal: **{user_goal}**"
-#         )
-
-#     if "look for" in user_goal.lower() or "find" in user_goal.lower():
-#         links = await Fetch.google_search_links(user_goal)
-#         return (
-#             f"🔍 **Search Results for**: _{user_goal}_\n\n" +
-#             "\n".join(f"- {link}" for link in links)
-#         )
-
-#     raise McpError(ErrorData(code=INVALID_PARAMS, message="Please provide either a job description, a job URL, or a search query in user_goal."))
-
-
-# # Image inputs and sending images
-
-# MAKE_IMG_BLACK_AND_WHITE_DESCRIPTION = RichToolDescription(
-#     description="Convert an image to black and white and save it.",
-#     use_when="Use this tool when the user provides an image URL and requests it to be converted to black and white.",
-#     side_effects="The image will be processed and saved in a black and white format.",
-# )
-
-# @mcp.tool(description=MAKE_IMG_BLACK_AND_WHITE_DESCRIPTION.model_dump_json())
-# async def make_img_black_and_white(
-#     puch_image_data: Annotated[str, Field(description="Base64-encoded image data to convert to black and white")] = None,
-# ) -> list[TextContent | ImageContent]:
-#     import base64
-#     import io
-
-#     from PIL import Image
-
-#     try:
-#         image_bytes = base64.b64decode(puch_image_data)
-#         image = Image.open(io.BytesIO(image_bytes))
-
-#         bw_image = image.convert("L")
-
-#         buf = io.BytesIO()
-#         bw_image.save(buf, format="PNG")
-#         bw_bytes = buf.getvalue()
-#         bw_base64 = base64.b64encode(bw_bytes).decode("utf-8")
-
-#         return [ImageContent(type="image", mimeType="image/png", data=bw_base64)]
-#     except Exception as e:
-#         raise McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
-
-# # --- Run MCP Server ---
-# async def main():
-#     print("🚀 Starting MCP server on http://0.0.0.0:8086")
-#     await mcp.run_async("streamable-http", host="0.0.0.0", port=8086)
-
-# if __name__ == "__main__":
-#     asyncio.run(main())
