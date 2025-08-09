@@ -13,6 +13,7 @@ import tempfile
 from datetime import datetime, timedelta
 import re
 from enum import Enum
+from whatsapp_duplicate import DuplicateFinderSession, DuplicateCleanupHelper
 
 # --- Load environment variables ---
 load_dotenv()
