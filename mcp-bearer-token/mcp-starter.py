@@ -2,6 +2,7 @@ import asyncio
 from typing import Annotated
 import os
 from dotenv import load_dotenv
+import requests # Import for weather tool
 from fastmcp.server import FastMCP # type: ignore
 from fastmcp.server.auth.providers.bearer import BearerAuthProvider, RSAKeyPair # type: ignore
 from mcp import ErrorData, McpError
@@ -18,6 +19,7 @@ load_dotenv()
 
 TOKEN = os.environ.get("AUTH_TOKEN")
 MY_NUMBER = os.environ.get("MY_NUMBER")
+OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY") # ADDED
 
 assert TOKEN is not None, "Please set AUTH_TOKEN in your .env file"
 assert MY_NUMBER is not None, "Please set MY_NUMBER in your .env file"
@@ -666,10 +668,6 @@ async def generate_schedule(
     """
     try:
         # Parse time inputs
-        start_h, start_m = map(int, start_time.split(':'))
-        end_h, end_m = map(int, end_time.split(':'))
-        
-        # Calculate total available minutes
         start_dt = datetime.strptime(start_time, "%H:%M")
         end_dt = datetime.strptime(end_time, "%H:%M")
         if end_dt <= start_dt:
@@ -707,10 +705,7 @@ async def generate_schedule(
         
         # Add mood-based suggestions if requested and there's remaining time
         if detected_mood and include_mood_activities and remaining_minutes > 30:
-            # Add a few mood-appropriate activities to fill remaining time
             mood_activities = RoutineGenerator.generate_routine(detected_mood, "full_day")
-            
-            # Filter activities that can fit in remaining time
             suitable_activities = [
                 act for act in mood_activities 
                 if act['duration'] <= remaining_minutes and act['priority'] <= 2
@@ -734,9 +729,8 @@ async def generate_schedule(
         date_str = f" for {date}" if date else ""
         mood_str = f" (optimized for {detected_mood} mood)" if detected_mood else ""
         
-        result = [f"📅 Generated Schedule{date_str}{mood_str} ({start_time} - {end_time}):\n"]
+        result = [f"📅 Generated Schedule{date_str}{mood_str} ({start_time} - {end_dt.strftime('%H:%M')}):\n"]
         
-        # Group by type
         user_tasks = [item for item in schedule if item['type'] == 'user_task']
         mood_suggestions = [item for item in schedule if item['type'] == 'mood_suggestion']
         
@@ -773,7 +767,7 @@ async def generate_schedule(
             message=f"Invalid schedule parameters: {str(e)}"
         ))
 
-# --- NEW TOOL: Song Recommendations ---
+# --- Tool: Song Recommendations ---
 SongRecommendationDescription = RichToolDescription(
     description="Analyze user's mood from text and recommend songs from curated Spotify playlists",
     use_when="User expresses emotions, asks for music recommendations, or mentions their current mood/feelings",
@@ -788,10 +782,8 @@ async def recommend_songs(
 ) -> str:
     """
     Analyze user's mood from their text and recommend appropriate songs from curated playlists.
-    Supports automatic mood detection or manual mood specification.
     """
     try:
-        # Use manual mood if provided, otherwise analyze text
         if mood_override and mood_override.lower() in ["happy", "sad", "angry", "excited", "neutral"]:
             detected_mood = mood_override.lower()
             mood_source = "manually specified"
@@ -799,17 +791,9 @@ async def recommend_songs(
             detected_mood = SongRecommendationEngine.analyze_mood(user_text)
             mood_source = "detected from your message"
         
-        # Get song recommendations
         songs = SongRecommendationEngine.get_recommendations(detected_mood, count)
         
-        # Format response
-        mood_emoji = {
-            "happy": "😊",
-            "sad": "😢", 
-            "angry": "😠",
-            "excited": "🚀",
-            "neutral": "😐"
-        }
+        mood_emoji = {"happy": "😊", "sad": "😢", "angry": "😠", "excited": "🚀", "neutral": "😐"}
         
         result = [
             f"🎵 **Song Recommendations Based on Your Mood**",
@@ -838,6 +822,7 @@ async def recommend_songs(
             message=f"Failed to generate song recommendations: {str(e)}"
         ))
 
+# --- Tool: Image Processing ---
 MAKE_IMG_BLACK_AND_WHITE_DESCRIPTION = RichToolDescription(
     description="Convert an image to black and white and save it.",
     use_when="Use this tool when the user provides an image URL and requests it to be converted to black and white.",
@@ -850,8 +835,10 @@ async def make_img_black_and_white(
 ) -> list[TextContent | ImageContent]:
     import base64
     import io
-
     from PIL import Image
+
+    if not puch_image_data:
+        return [TextContent(type="text", text="Error: No image data provided.")]
 
     try:
         image_bytes = base64.b64decode(puch_image_data)
@@ -867,6 +854,60 @@ async def make_img_black_and_white(
         return [ImageContent(type="image", mimeType="image/png", data=bw_base64)]
     except Exception as e:
         raise McpError(ErrorData(code=INTERNAL_ERROR, message=str(e)))
+
+# --- Tool: get_weather (ADDED) ---
+WeatherToolDescription = RichToolDescription(
+    description="Fetches the current weather for a specified city.",
+    use_when="User asks about the weather, temperature, or climate in a particular location.",
+    side_effects="Makes a real-time request to an external weather API."
+)
+
+@mcp.tool(description=WeatherToolDescription.model_dump_json())
+async def get_weather(
+    city: Annotated[str, Field(description="The city name to get the weather for, e.g., 'Kolkata' or 'London'")]
+) -> str:
+    """
+    Fetches the current weather from the OpenWeatherMap API for a given city.
+    """
+    if not OPENWEATHER_API_KEY:
+        return "Error: OpenWeatherMap API key is not configured."
+
+    base_url = "http://api.openweathermap.org/data/2.5/weather"
+    params = {
+        "q": city,
+        "appid": OPENWEATHER_API_KEY,
+        "units": "metric"  # For Celsius
+    }
+    
+    try:
+        response = requests.get(base_url, params=params)
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        
+        data = response.json()
+        
+        if data.get("cod") != 200:
+            return f"Error: Could not retrieve weather for {city}. Reason: {data.get('message', 'Unknown error')}"
+
+        main = data['main']
+        weather_desc = data['weather'][0]['description']
+        temp = main['temp']
+        feels_like = main['feels_like']
+        humidity = main['humidity']
+
+        return (
+            f"☀️ Weather in {data['name']}:\n"
+            f"- Condition: {weather_desc.title()}\n"
+            f"- Temperature: {temp}°C\n"
+            f"- Feels Like: {feels_like}°C\n"
+            f"- Humidity: {humidity}%"
+        )
+
+    except requests.exceptions.HTTPError as http_err:
+        if response.status_code == 404:
+            return f"Error: The city '{city}' could not be found. Please check the spelling."
+        return f"Error: An HTTP error occurred: {http_err}"
+    except Exception as e:
+        return f"An unexpected error occurred: {str(e)}"
 
 # --- Run MCP Server ---
 async def main():
