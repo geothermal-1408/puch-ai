@@ -9,3 +9,6 @@ markdownify>=0.11.6
 readabilipy>=0.4.0
 fastapi>=0.95.0  # If fastmcp depends on FastAPI
 uvicorn>=0.22.0  # For running ASGI apps
+fastmcp>=0.9.0  # For MCP server functionality
+Pillow>=9.0.0  # For image processing
+mcp>=1.0.0  # MCP protocol implementation

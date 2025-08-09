@@ -45,13 +45,181 @@ class RichToolDescription(BaseModel):
     use_when: str
     side_effects: str | None = None
 
-# --- SONG RECOMMENDATION CLASSES ---
+# --- MOOD-BASED ROUTINE AND TODO CLASSES ---
 class Mood(Enum):
     HAPPY = "happy"
     SAD = "sad"
     NEUTRAL = "neutral"
     ANGRY = "angry"
     EXCITED = "excited"
+
+class RoutineGenerator:
+    """Generator for mood-based daily routines"""
+    
+    MOOD_ROUTINES = {
+        "happy": {
+            "morning": [
+                {"activity": "Gratitude journaling", "duration": 10, "priority": 1},
+                {"activity": "Energetic workout or dance", "duration": 30, "priority": 1},
+                {"activity": "Healthy breakfast with favorite music", "duration": 20, "priority": 2},
+                {"activity": "Plan exciting activities for the day", "duration": 15, "priority": 2}
+            ],
+            "afternoon": [
+                {"activity": "Creative project or hobby", "duration": 60, "priority": 1},
+                {"activity": "Social activity with friends/family", "duration": 45, "priority": 2},
+                {"activity": "Outdoor walk or fresh air activity", "duration": 30, "priority": 2}
+            ],
+            "evening": [
+                {"activity": "Share positive moments with others", "duration": 20, "priority": 1},
+                {"activity": "Listen to upbeat music or watch comedy", "duration": 30, "priority": 2},
+                {"activity": "Plan tomorrow's fun activities", "duration": 15, "priority": 3}
+            ]
+        },
+        "sad": {
+            "morning": [
+                {"activity": "Gentle meditation or breathing exercises", "duration": 15, "priority": 1},
+                {"activity": "Light stretching or gentle yoga", "duration": 20, "priority": 1},
+                {"activity": "Nutritious comfort breakfast", "duration": 25, "priority": 2},
+                {"activity": "Journal feelings or call a friend", "duration": 20, "priority": 2}
+            ],
+            "afternoon": [
+                {"activity": "Self-care activity (bath, skincare, etc.)", "duration": 45, "priority": 1},
+                {"activity": "Watch uplifting content or read", "duration": 60, "priority": 2},
+                {"activity": "Nature walk or sit in sunlight", "duration": 30, "priority": 2}
+            ],
+            "evening": [
+                {"activity": "Connect with supportive people", "duration": 30, "priority": 1},
+                {"activity": "Gentle evening routine", "duration": 20, "priority": 2},
+                {"activity": "Practice self-compassion exercises", "duration": 15, "priority": 1}
+            ]
+        },
+        "angry": {
+            "morning": [
+                {"activity": "Intense physical exercise", "duration": 45, "priority": 1},
+                {"activity": "Punching bag or stress relief activity", "duration": 20, "priority": 1},
+                {"activity": "Cool down with protein-rich breakfast", "duration": 15, "priority": 2},
+                {"activity": "Identify anger triggers in journal", "duration": 15, "priority": 2}
+            ],
+            "afternoon": [
+                {"activity": "Problem-solving session for anger source", "duration": 30, "priority": 1},
+                {"activity": "Physical activity or sports", "duration": 60, "priority": 2},
+                {"activity": "Calming activity (art, music, etc.)", "duration": 30, "priority": 2}
+            ],
+            "evening": [
+                {"activity": "Progressive muscle relaxation", "duration": 20, "priority": 1},
+                {"activity": "Vent to trusted friend or therapist", "duration": 30, "priority": 2},
+                {"activity": "Plan constructive actions for tomorrow", "duration": 20, "priority": 1}
+            ]
+        },
+        "excited": {
+            "morning": [
+                {"activity": "High-energy workout", "duration": 45, "priority": 1},
+                {"activity": "Plan exciting day activities", "duration": 20, "priority": 1},
+                {"activity": "Quick energizing breakfast", "duration": 15, "priority": 2},
+                {"activity": "Share excitement with others", "duration": 10, "priority": 2}
+            ],
+            "afternoon": [
+                {"activity": "Start that project you've been wanting to do", "duration": 90, "priority": 1},
+                {"activity": "Adventure or new experience", "duration": 60, "priority": 2},
+                {"activity": "High-energy social activity", "duration": 45, "priority": 2}
+            ],
+            "evening": [
+                {"activity": "Celebrate the day's achievements", "duration": 30, "priority": 1},
+                {"activity": "Plan future exciting goals", "duration": 25, "priority": 2},
+                {"activity": "Wind down with calming activity", "duration": 20, "priority": 2}
+            ]
+        },
+        "neutral": {
+            "morning": [
+                {"activity": "Balanced morning routine", "duration": 30, "priority": 1},
+                {"activity": "Moderate exercise", "duration": 30, "priority": 2},
+                {"activity": "Healthy breakfast", "duration": 20, "priority": 2},
+                {"activity": "Review daily goals", "duration": 15, "priority": 2}
+            ],
+            "afternoon": [
+                {"activity": "Focus on important tasks", "duration": 90, "priority": 1},
+                {"activity": "Take regular breaks", "duration": 15, "priority": 2},
+                {"activity": "Connect with colleagues/friends", "duration": 30, "priority": 2}
+            ],
+            "evening": [
+                {"activity": "Relaxing hobby or reading", "duration": 45, "priority": 1},
+                {"activity": "Prepare for tomorrow", "duration": 20, "priority": 2},
+                {"activity": "Evening wind-down routine", "duration": 30, "priority": 2}
+            ]
+        }
+    }
+    
+    @classmethod
+    def generate_routine(cls, mood: str, time_period: str = "full_day") -> list:
+        """Generate a routine based on mood and time period"""
+        mood_lower = mood.lower()
+        if mood_lower not in cls.MOOD_ROUTINES:
+            mood_lower = "neutral"
+        
+        if time_period == "morning":
+            return cls.MOOD_ROUTINES[mood_lower]["morning"]
+        elif time_period == "afternoon":
+            return cls.MOOD_ROUTINES[mood_lower]["afternoon"]
+        elif time_period == "evening":
+            return cls.MOOD_ROUTINES[mood_lower]["evening"]
+        else:
+            # Return full day routine
+            routine = []
+            routine.extend(cls.MOOD_ROUTINES[mood_lower]["morning"])
+            routine.extend(cls.MOOD_ROUTINES[mood_lower]["afternoon"])
+            routine.extend(cls.MOOD_ROUTINES[mood_lower]["evening"])
+            return routine
+
+class TodoManager:
+    """Simple todo list manager"""
+    
+    def __init__(self):
+        self.todos = []
+        self.next_id = 1
+    
+    def add_todo(self, task: str, priority: int = 2, due_date: str = None, due_time: str = None) -> dict:
+        """Add a new todo item"""
+        todo = {
+            "id": self.next_id,
+            "task": task,
+            "priority": priority,
+            "due_date": due_date,
+            "due_time": due_time,
+            "completed": False,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        self.todos.append(todo)
+        self.next_id += 1
+        return todo
+    
+    def complete_todo(self, todo_id: int) -> bool:
+        """Mark a todo as completed"""
+        for todo in self.todos:
+            if todo["id"] == todo_id:
+                todo["completed"] = True
+                return True
+        return False
+    
+    def remove_todo(self, todo_id: int) -> bool:
+        """Remove a todo item"""
+        for i, todo in enumerate(self.todos):
+            if todo["id"] == todo_id:
+                self.todos.pop(i)
+                return True
+        return False
+    
+    def get_todos(self, show_completed: bool = False) -> list:
+        """Get all todos, optionally including completed ones"""
+        if show_completed:
+            return self.todos
+        return [todo for todo in self.todos if not todo["completed"]]
+    
+    def get_todos_by_priority(self, priority: int) -> list:
+        """Get todos by priority level"""
+        return [todo for todo in self.todos if todo["priority"] == priority and not todo["completed"]]
+
+# Create global todo manager instance
+todo_manager = TodoManager()
 
 class SongRecommendationEngine:
     """Engine for analyzing mood and recommending songs"""
@@ -243,11 +411,239 @@ async def extract_pdf_text(
             code=INTERNAL_ERROR,
             message=f"Failed to extract PDF text: {str(e)}"
         ))
+# --- Tool: generate_mood_routine ---
+MoodRoutineDescription = RichToolDescription(
+    description="Generate a personalized daily routine based on current mood and emotional state",
+    use_when="User wants a routine tailored to their current mood (happy, sad, angry, excited, neutral)",
+    side_effects="Creates a time-structured routine with mood-appropriate activities"
+)
+
+@mcp.tool(description=MoodRoutineDescription.model_dump_json())
+async def generate_mood_routine(
+    mood_text: Annotated[str, Field(description="Text describing current mood or feelings")],
+    mood_override: Annotated[str | None, Field(description="Manually specify mood (happy/sad/angry/excited/neutral)")] = None,
+    time_period: Annotated[str, Field(description="Time period for routine (morning/afternoon/evening/full_day)")] = "full_day",
+    start_time: Annotated[str, Field(description="Routine start time (HH:MM)")] = "08:00"
+) -> str:
+    """
+    Generate a personalized routine based on mood analysis with specific activities and timing.
+    """
+    try:
+        # Detect or use specified mood
+        if mood_override and mood_override.lower() in ["happy", "sad", "angry", "excited", "neutral"]:
+            detected_mood = mood_override.lower()
+            mood_source = "manually specified"
+        else:
+            detected_mood = SongRecommendationEngine.analyze_mood(mood_text)
+            mood_source = "detected from your message"
+        
+        # Generate routine activities
+        routine_activities = RoutineGenerator.generate_routine(detected_mood, time_period)
+        
+        # Create schedule with timing
+        current_time = datetime.strptime(start_time, "%H:%M")
+        scheduled_activities = []
+        
+        for activity in routine_activities:
+            end_time = current_time + timedelta(minutes=activity['duration'])
+            scheduled_activities.append({
+                'activity': activity['activity'],
+                'start': current_time.strftime("%H:%M"),
+                'end': end_time.strftime("%H:%M"),
+                'duration': activity['duration'],
+                'priority': activity['priority']
+            })
+            current_time = end_time + timedelta(minutes=5)  # 5-minute buffer between activities
+        
+        # Format the routine
+        mood_emoji = {
+            "happy": "😊",
+            "sad": "😢", 
+            "angry": "😠",
+            "excited": "🚀",
+            "neutral": "😐"
+        }
+        
+        result = [
+            f"🌟 **Mood-Based Routine Generated**",
+            f"",
+            f"**Your Mood:** {mood_emoji.get(detected_mood, '🎯')} {detected_mood.title()} ({mood_source})",
+            f"**Your Message:** \"{mood_text}\"",
+            f"**Time Period:** {time_period.replace('_', ' ').title()}",
+            f"",
+            f"📅 **Your Personalized Routine:**"
+        ]
+        
+        for item in scheduled_activities:
+            priority_emoji = "❗" if item['priority'] == 1 else "🔹" if item['priority'] == 2 else "▪️"
+            result.append(
+                f"{priority_emoji} {item['start']}-{item['end']} ({item['duration']}min): {item['activity']}"
+            )
+        
+        result.extend([
+            f"",
+            f"💡 **Tips for your {detected_mood} mood:**"
+        ])
+        
+        # Add mood-specific tips
+        tips = {
+            "happy": ["Keep the positive energy flowing!", "Share your happiness with others", "Use this energy for productive activities"],
+            "sad": ["Be gentle with yourself", "Focus on self-care and comfort", "Reach out to supportive people"],
+            "angry": ["Channel anger into physical activity", "Take time to cool down", "Address the source of anger constructively"],
+            "excited": ["Use this energy for important projects", "Stay focused despite high energy", "Plan future exciting goals"],
+            "neutral": ["Maintain balance and consistency", "Focus on important but routine tasks", "Build healthy habits"]
+        }
+        
+        for tip in tips.get(detected_mood, tips["neutral"]):
+            result.append(f"• {tip}")
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        raise McpError(ErrorData(
+            code=INTERNAL_ERROR,
+            message=f"Failed to generate mood routine: {str(e)}"
+        ))
+
+# --- Tool: manage_todo_list ---
+TodoListDescription = RichToolDescription(
+    description="Manage a personal todo list with add, complete, remove, and view operations",
+    use_when="User wants to manage their tasks and todo items",
+    side_effects="Modifies the todo list by adding, completing, or removing items"
+)
+
+class TodoAction(Enum):
+    ADD = "add"
+    COMPLETE = "complete"
+    REMOVE = "remove"
+    VIEW = "view"
+    VIEW_BY_PRIORITY = "view_by_priority"
+
+@mcp.tool(description=TodoListDescription.model_dump_json())
+async def manage_todo_list(
+    action: Annotated[TodoAction, Field(description="Action to perform on todo list")],
+    task: Annotated[str | None, Field(description="Task description (required for 'add' action)")] = None,
+    todo_id: Annotated[int | None, Field(description="Todo ID (required for 'complete' and 'remove' actions)")] = None,
+    priority: Annotated[int, Field(description="Task priority: 1=high, 2=medium, 3=low", ge=1, le=3)] = 2,
+    due_date: Annotated[str | None, Field(description="Due date for task (YYYY-MM-DD format)")] = None,
+    time: Annotated[str | None, Field(description="Due time for task (HH:MM format)")] = None,
+    show_completed: Annotated[bool, Field(description="Include completed todos in view")] = False,
+    priority_filter: Annotated[int | None, Field(description="Filter by priority level (1-3)", ge=1, le=3)] = None
+) -> str:
+    """
+    Manage your personal todo list with various operations.
+    """
+    try:
+        if action == TodoAction.ADD:
+            if not task:
+                return "❌ Error: Task description is required for adding a todo."
+            
+            todo = todo_manager.add_todo(task, priority, due_date, time)
+            priority_text = {1: "High", 2: "Medium", 3: "Low"}[priority]
+            
+            # Build due date/time text
+            due_parts = []
+            if due_date:
+                due_parts.append(f"Date: {due_date}")
+            if time:
+                due_parts.append(f"Time: {time}")
+            due_text = f" (Due: {', '.join(due_parts)})" if due_parts else ""
+            
+            return f"✅ **Todo Added Successfully!**\n\n📝 **Task:** {task}\n🔹 **Priority:** {priority_text}\n🆔 **ID:** {todo['id']}{due_text}\n📅 **Created:** {todo['created_at']}"
+        
+        elif action == TodoAction.COMPLETE:
+            if todo_id is None:
+                return "❌ Error: Todo ID is required for completing a task."
+            
+            if todo_manager.complete_todo(todo_id):
+                return f"🎉 **Task Completed!**\n\nTodo ID {todo_id} has been marked as completed."
+            else:
+                return f"❌ Error: Todo with ID {todo_id} not found."
+        
+        elif action == TodoAction.REMOVE:
+            if todo_id is None:
+                return "❌ Error: Todo ID is required for removing a task."
+            
+            if todo_manager.remove_todo(todo_id):
+                return f"🗑️ **Task Removed!**\n\nTodo ID {todo_id} has been permanently deleted."
+            else:
+                return f"❌ Error: Todo with ID {todo_id} not found."
+        
+        elif action == TodoAction.VIEW_BY_PRIORITY:
+            if priority_filter is None:
+                return "❌ Error: Priority level is required for viewing by priority."
+            
+            todos = todo_manager.get_todos_by_priority(priority_filter)
+            priority_text = {1: "High", 2: "Medium", 3: "Low"}[priority_filter]
+            
+            if not todos:
+                return f"📋 **{priority_text} Priority Todos**\n\nNo tasks found with {priority_text.lower()} priority."
+            
+            result = [f"📋 **{priority_text} Priority Todos** ({len(todos)} tasks)\n"]
+            for todo in todos:
+                # Build due date/time text
+                due_parts = []
+                if todo.get('due_date'):
+                    due_parts.append(f"Date: {todo['due_date']}")
+                if todo.get('due_time'):
+                    due_parts.append(f"Time: {todo['due_time']}")
+                due_text = f" 📅 Due: {', '.join(due_parts)}" if due_parts else ""
+                result.append(f"🆔 {todo['id']} | {todo['task']}{due_text}")
+            
+            return "\n".join(result)
+        
+        else:  # VIEW action
+            todos = todo_manager.get_todos(show_completed)
+            
+            if not todos:
+                return "📋 **Your Todo List**\n\nNo todos found. Add some tasks to get started!"
+            
+            # Separate by completion status and priority
+            pending_todos = [t for t in todos if not t['completed']]
+            completed_todos = [t for t in todos if t['completed']]
+            
+            result = [f"📋 **Your Todo List** ({len(pending_todos)} pending, {len(completed_todos)} completed)\n"]
+            
+            if pending_todos:
+                result.append("**🔄 Pending Tasks:**")
+                # Sort by priority
+                pending_todos.sort(key=lambda x: x['priority'])
+                for todo in pending_todos:
+                    priority_emoji = "❗" if todo['priority'] == 1 else "🔹" if todo['priority'] == 2 else "▪️"
+                    # Build due date/time text
+                    due_parts = []
+                    if todo.get('due_date'):
+                        due_parts.append(f"Date: {todo['due_date']}")
+                    if todo.get('due_time'):
+                        due_parts.append(f"Time: {todo['due_time']}")
+                    due_text = f" 📅 Due: {', '.join(due_parts)}" if due_parts else ""
+                    result.append(f"{priority_emoji} 🆔 {todo['id']} | {todo['task']}{due_text}")
+                result.append("")
+            
+            if completed_todos and show_completed:
+                result.append("**✅ Completed Tasks:**")
+                for todo in completed_todos:
+                    result.append(f"✅ 🆔 {todo['id']} | {todo['task']}")
+            
+            result.extend([
+                "**💡 Quick Actions:**",
+                "• Add task: specify action='add' and task description",
+                "• Complete task: specify action='complete' and todo_id",
+                "• Remove task: specify action='remove' and todo_id"
+            ])
+            
+            return "\n".join(result)
+        
+    except Exception as e:
+        raise McpError(ErrorData(
+            code=INTERNAL_ERROR,
+            message=f"Failed to manage todo list: {str(e)}"
+        ))
 # --- Tool: generate_schedule ---
 ScheduleGeneratorDescription = RichToolDescription(
-    description="Generate a daily or weekly schedule based on tasks and priorities",
-    use_when="User needs help organizing their time with a structured schedule",
-    side_effects="Creates a time-blocked schedule"
+    description="Generate a daily or weekly schedule based on tasks, priorities, and optionally mood",
+    use_when="User needs help organizing their time with a structured schedule, optionally considering their mood",
+    side_effects="Creates a time-blocked schedule with mood-appropriate suggestions"
 )
 
 class ScheduleItem(BaseModel):
@@ -261,9 +657,12 @@ async def generate_schedule(
     start_time: Annotated[str, Field(description="Schedule start time (HH:MM)")] = "08:00",
     end_time: Annotated[str, Field(description="Schedule end time (HH:MM)")] = "20:00",
     date: Annotated[str | None, Field(description="Date for schedule (YYYY-MM-DD)")] = None,
+    mood_text: Annotated[str | None, Field(description="Optional: Text describing current mood for mood-based suggestions")] = None,
+    include_mood_activities: Annotated[bool, Field(description="Whether to include mood-based activity suggestions")] = False,
 ) -> str:
     """
     Generate a time-blocked schedule based on provided tasks and time constraints.
+    Optionally includes mood-based activity suggestions.
     """
     try:
         # Parse time inputs
@@ -277,6 +676,11 @@ async def generate_schedule(
             end_dt += timedelta(days=1)  # Handle overnight schedules
         total_minutes = int((end_dt - start_dt).total_seconds() / 60)
         
+        # Analyze mood if provided
+        detected_mood = None
+        if mood_text and include_mood_activities:
+            detected_mood = SongRecommendationEngine.analyze_mood(mood_text)
+        
         # Sort tasks by priority then duration
         sorted_tasks = sorted(tasks, key=lambda x: (x.priority, x.duration_minutes))
         
@@ -287,31 +691,79 @@ async def generate_schedule(
         
         for task in sorted_tasks:
             if task.duration_minutes <= remaining_minutes:
-                end_time = current_time + timedelta(minutes=task.duration_minutes)
+                end_time_task = current_time + timedelta(minutes=task.duration_minutes)
                 schedule.append({
                     'task': task.task,
                     'start': current_time.strftime("%H:%M"),
-                    'end': end_time.strftime("%H:%M"),
+                    'end': end_time_task.strftime("%H:%M"),
                     'duration': task.duration_minutes,
-                    'priority': task.priority
+                    'priority': task.priority,
+                    'type': 'user_task'
                 })
-                current_time = end_time
+                current_time = end_time_task
                 remaining_minutes -= task.duration_minutes
             else:
                 break  # Skip tasks that don't fit
         
+        # Add mood-based suggestions if requested and there's remaining time
+        if detected_mood and include_mood_activities and remaining_minutes > 30:
+            # Add a few mood-appropriate activities to fill remaining time
+            mood_activities = RoutineGenerator.generate_routine(detected_mood, "full_day")
+            
+            # Filter activities that can fit in remaining time
+            suitable_activities = [
+                act for act in mood_activities 
+                if act['duration'] <= remaining_minutes and act['priority'] <= 2
+            ][:3]  # Limit to 3 suggestions
+            
+            for activity in suitable_activities:
+                if activity['duration'] <= remaining_minutes:
+                    end_time_activity = current_time + timedelta(minutes=activity['duration'])
+                    schedule.append({
+                        'task': f"💭 {activity['activity']} (mood suggestion)",
+                        'start': current_time.strftime("%H:%M"),
+                        'end': end_time_activity.strftime("%H:%M"),
+                        'duration': activity['duration'],
+                        'priority': activity['priority'],
+                        'type': 'mood_suggestion'
+                    })
+                    current_time = end_time_activity + timedelta(minutes=5)
+                    remaining_minutes -= (activity['duration'] + 5)
+        
         # Format the schedule
         date_str = f" for {date}" if date else ""
-        result = [f"📅 Generated Schedule{date_str} ({start_time} - {end_time}):\n"]
+        mood_str = f" (optimized for {detected_mood} mood)" if detected_mood else ""
         
-        for item in schedule:
-            priority_emoji = "❗" if item['priority'] == 1 else "🔹" if item['priority'] == 2 else "▪️"
-            result.append(
-                f"{priority_emoji} {item['start']}-{item['end']} ({item['duration']}min): {item['task']}"
-            )
+        result = [f"📅 Generated Schedule{date_str}{mood_str} ({start_time} - {end_time}):\n"]
+        
+        # Group by type
+        user_tasks = [item for item in schedule if item['type'] == 'user_task']
+        mood_suggestions = [item for item in schedule if item['type'] == 'mood_suggestion']
+        
+        if user_tasks:
+            result.append("**📝 Your Scheduled Tasks:**")
+            for item in user_tasks:
+                priority_emoji = "❗" if item['priority'] == 1 else "🔹" if item['priority'] == 2 else "▪️"
+                result.append(
+                    f"{priority_emoji} {item['start']}-{item['end']} ({item['duration']}min): {item['task']}"
+                )
+            result.append("")
+        
+        if mood_suggestions:
+            result.append(f"**🌟 Mood-Based Suggestions ({detected_mood}):**")
+            for item in mood_suggestions:
+                priority_emoji = "❗" if item['priority'] == 1 else "🔹" if item['priority'] == 2 else "▪️"
+                result.append(
+                    f"{priority_emoji} {item['start']}-{item['end']} ({item['duration']}min): {item['task']}"
+                )
+            result.append("")
         
         if remaining_minutes > 0:
-            result.append(f"\n⏳ Remaining unscheduled time: {remaining_minutes} minutes")
+            result.append(f"⏳ Remaining free time: {remaining_minutes} minutes")
+        
+        if detected_mood:
+            mood_emoji = {"happy": "😊", "sad": "😢", "angry": "😠", "excited": "🚀", "neutral": "😐"}
+            result.append(f"\n🎯 **Mood detected:** {mood_emoji.get(detected_mood, '🎯')} {detected_mood.title()}")
         
         return "\n".join(result)
     
