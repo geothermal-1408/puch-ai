@@ -989,7 +989,7 @@ async def get_weather(
 # --- Run MCP Server ---
 async def main():
     # SOURCERY: Replaced loop with a more efficient and readable .join method
-    port = int(os.environ.get("PORT", 8086))
+    port = int(os.environ.get("PORT", 8080))
     print(f"🚀 Starting MCP server on http://0.0.0.0:{port}")
     tools_list = [
         "🔍 validate - Required validation tool for Puch AI",
