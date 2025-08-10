@@ -13,6 +13,7 @@ import tempfile
 from datetime import datetime, timedelta
 import re
 from enum import Enum
+import httpx
 
 # --- Load environment variables ---
 load_dotenv()
@@ -468,8 +469,7 @@ async def extract_pdf_text(
 
         word_count = len(pdf_text.split())
         char_count = len(pdf_text)
-        result = [
-            "📄 **PDF Text Extraction Complete**",
+        result = ["📄 **PDF Text Extraction Complete**",
             "",
             f"📊 **Statistics:**",
             f"• Word count: {word_count:,}",
@@ -942,7 +942,7 @@ async def get_weather(
     city: Annotated[str, Field(description="The city name to get the weather for, e.g., 'Kolkata' or 'London'")]
 ) -> str:
     """
-    Fetches the current weather from the OpenWeatherMap API for a given city.
+    Fetches the current weather from the OpenWeatherMap API for a given city asynchronously.
     """
     if not OPENWEATHER_API_KEY:
         return "Error: OpenWeatherMap API key is not configured."
@@ -955,8 +955,10 @@ async def get_weather(
     }
     
     try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        # Use an async client to make the request without blocking the server
+        async with httpx.AsyncClient() as client:
+            response = await client.get(base_url, params=params)
+            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
         
         data = response.json()
         
@@ -977,8 +979,8 @@ async def get_weather(
             f"- Humidity: {humidity}%"
         )
 
-    except requests.exceptions.HTTPError as http_err:
-        if response.status_code == 404:
+    except httpx.HTTPStatusError as http_err:
+        if http_err.response.status_code == 404:
             return f"Error: The city '{city}' could not be found. Please check the spelling."
         return f"Error: An HTTP error occurred: {http_err}"
     except Exception as e:
@@ -986,26 +988,28 @@ async def get_weather(
 
 # --- Run MCP Server ---
 async def main():
-    print("🚀 Starting MCP server on http://0.0.0.0:8086")
-    print("\n📋 Available Tools:")
-    print("=" * 50)
-    tools = [
+    # SOURCERY: Replaced loop with a more efficient and readable .join method
+    port = int(os.environ.get("PORT", 8086))
+    print(f"🚀 Starting MCP server on http://0.0.0.0:{port}")
+    tools_list = [
         "🔍 validate - Required validation tool for Puch AI",
         "📄 extract_pdf_text - Extract text content from PDF files",
         "🌟 generate_mood_routine - Generate mood-based daily routines",
-        "📝 manage_todo_list - Manage personal todo list (add/complete/remove/view)",
-        "📅 generate_schedule - Generate time-blocked schedules with mood integration",
-        "🎵 recommend_songs - Get mood-based song recommendations from Spotify",
+        "📝 manage_todo_list - Manage personal todo list",
+        "📅 generate_schedule - Generate time-blocked schedules",
+        "🎵 recommend_songs - Get mood-based song recommendations",
         "🖼️ make_img_black_and_white - Convert images to black and white",
-        "☀️ get_weather - Get current weather information for any city"
+        "☀️ get_weather - Get current weather information"
     ]
-    for tool in tools:
-        print(f"  {tool}")
+    print("\n📋 Available Tools:")
+    print("=" * 50)
+    print("\n".join(f"  {tool}" for tool in tools_list))
     print("=" * 50)
     print("✅ Server ready for connections!")
-    print("💡 Connect using: /mcp connect https://your-domain.ngrok.app/mcp your_auth_token")
-    print("")
-    await mcp.run_async("streamable-http", host="0.0.0.0", port=8086)
+    # SOURCERY: Replaced redundant f-string
+    print("💡 Connect using: /mcp connect https://your-domain/mcp your_auth_token")
+    print("") # Replaced f""
+    await mcp.run_async("streamable-http", host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     asyncio.run(main())
